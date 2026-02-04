@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register</title>
+  <script>
+    var mtcaptchaConfig = { "sitekey": "MTPublic-EmLnVU1TS" };
+    (function () {
+      var mt_service = document.createElement("script");
+      mt_service.async = true;
+      mt_service.src = "https://service.mtcaptcha.com/mtcv1/client/mtcaptcha.min.js";
+      (document.head || document.body).appendChild(mt_service);
+
+      var mt_service2 = document.createElement("script");
+      mt_service2.async = true;
+      mt_service2.src = "https://service2.mtcaptcha.com/mtcv1/client/mtcaptcha2.min.js";
+      (document.head || document.body).appendChild(mt_service2);
+    })();
+  </script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #left-panel {
+      flex: 0 0 450px;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 2px solid #ddd;
+    }
+    #right-panel {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: #f5f5f5;
+    }
+    h1 { margin-bottom: 10px; margin-top: 0; }
+    h2 { margin-top: 0; font-size: 1.2rem; }
+    form { max-width: 400px; }
+    input {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 12px 24px;
+      margin-top: 8px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:active {
+      background: #3d8b40;
+    }
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    button:disabled:hover {
+      background: #cccccc;
+    }
+    .mtcaptcha {
+      margin: 10px 0;
+    }
+    #debug-card {
+      margin-top: 24px;
+      padding: 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+      display: none;
+    }
+    #debug-card h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+    #debug-output {
+      background: #0b1020;
+      color: #e6e6e6;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow: auto;
+    }
+    #status-text {
+      margin-top: 8px;
+      font-size: 0.9rem;
+    }
+    #token-display {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .token-section {
+      margin-bottom: 16px;
+    }
+    .token-label {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .token-value {
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 3px solid #4CAF50;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+    .token-timestamp {
+      color: #666;
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+  </style>
+  </head>
+<body>
+  <div id="left-panel">
+    <h1>Register</h1>
+
+    <form id="registerForm">
+    <input
+      type="text"
+      id="registerName"
+      name="name"
+      placeholder="Name"
+      value="John Doe"
+      required
+    />
+    <input
+      type="email"
+      id="registerEmail"
+      name="email"
+      placeholder="Email"
+      value="john.doe@example.com"
+      required
+    />
+    <textarea
+      id="comments"
+      name="comments"
+      placeholder="Comments"
+      rows="4"
+      style="width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; font-family: Arial, sans-serif; resize: vertical;"
+      required
+    >This is a test registration</textarea>
+    <div class="mtcaptcha"></div>
+
+    <button type="submit" id="registerButton" disabled>Register</button>
+  </form>
+
+    <div id="status-text"></div>
+  </div>
+
+  <div id="right-panel">
+    <h2>MTCaptcha Token</h2>
+    <div id="token-display">
+      <p style="color: #999; text-align: center;">Waiting for CAPTCHA to be solved...</p>
+    </div>
+  </div>
+
+  <script>
+    // Function to display token on the right panel
+    function displayToken(token) {
+      console.log('Displaying token:', token);
+      const tokenDisplay = document.getElementById('token-display');
+      const timestamp = new Date().toLocaleString();
+      
+      // Enable the register button
+      const registerButton = document.getElementById('registerButton');
+      if (registerButton) {
+        registerButton.disabled = false;
+      }
+      
+      tokenDisplay.innerHTML = `
+        <div class="token-section">
+          <div class="token-label">Token Received from the CAPTCHA server:</div>
+          <div class="token-value">${token}</div>
+          <div class="token-timestamp">Received at: ${timestamp}</div>
+        </div>
+      `;
+    }
+    
+    let lastTokenValue = '';
+    let checkCount = 0;
+    
+    // Simpler polling approach - check every 100ms
+    setInterval(() => {
+      checkCount++;
+      const tokenInput = document.querySelector('input[name="mtcaptcha-verifiedtoken"]');
+      
+      if (checkCount % 50 === 0) {
+        console.log('Checking for token input...', tokenInput ? 'Found' : 'Not found');
+      }
+      
+      if (tokenInput) {
+        const currentValue = tokenInput.value;
+        
+        if (currentValue && currentValue !== lastTokenValue) {
+          console.log('NEW TOKEN DETECTED:', currentValue);
+          lastTokenValue = currentValue;
+          displayToken(currentValue);
+        }
+      }
+    }, 100);
+    
+    console.log('Token monitoring started');
+    
+    function findTokenInput() {
+      return document.querySelector('input[name="mtcaptcha-verifiedtoken"]');
+    }
+
+    function explainToken(token) {
+      if (!token || typeof token !== "string") {
+        return { error: "No token or invalid token", raw: token };
+      }
+
+      if (!token.startsWith("v1(") || !token.endsWith(")")) {
+        return { error: "Unexpected token format", raw: token };
+      }
+
+     
+      const inner = token.slice(3, -1);
+      const parts = inner.split(",");
+
+      if (parts.length < 5) {
+        return {
+          error: "Token does not have 5 comma-separated parts",
+          rawInner: inner,
+          parts
+        };
+      }
+
+      const [
+        mtCaptchaChecksum,
+        customerChecksum,
+        sitekey,
+        randomSeed,
+        ...rest
+      ] = parts;
+
+      const encryptedTokenInfo = rest.join(",");
+
+      return {
+        mtCaptchaChecksum,
+        customerChecksum,
+        sitekey,
+        randomSeed,
+        encryptedTokenInfo
+      };
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("registerForm");
+      const statusText = document.getElementById("status-text");
+      const debugCard = document.getElementById("debug-card");
+      const debugOutput = document.getElementById("debug-output");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const name = document.getElementById("registerName").value.trim();
+        const email = document.getElementById("registerEmail").value.trim();
+        const comments = document.getElementById("comments").value.trim();
+
+        const tokenInput = findTokenInput();
+        const token = tokenInput ? tokenInput.value : null;
+
+        if (!token) {
+          statusText.textContent = "Please complete the CAPTCHA before registering.";
+          return;
+        }
+
+        statusText.textContent = "Submitting registration to backend…";
+        const tokenDetails = explainToken(token);
+
+        // Prepare request data
+        const requestData = { name, email, comments, token };
+        const requestUrl = window.location.origin + "/register";
+        
+        // Display request info on right panel
+        const tokenDisplay = document.getElementById('token-display');
+        tokenDisplay.innerHTML += `
+          <div class="token-section" style="margin-top: 20px; border-top: 2px solid #ddd; padding-top: 16px;">
+            <div class="token-label">Frontend → Backend:</div>
+            <div class="token-value">POST ${requestUrl}
+
+Request Body:
+${JSON.stringify(requestData, null, 2)}</div>
+            <div class="token-timestamp">Submitted at: ${new Date().toLocaleString()}</div>
+          </div>
+        `;
+
+        try {
+          const res = await fetch("/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestData)
+          });
+
+          const data = await res.json();
+
+          // Display backend verification request and response
+          if (data.verificationRequest && data.verificationResponse) {
+            tokenDisplay.innerHTML += `
+              <div class="token-section" style="margin-top: 20px; border-top: 2px solid #ddd; padding-top: 16px;">
+                <div class="token-label">Backend → MTCaptcha Server:</div>
+                <div class="token-value">${data.verificationRequest.method} ${data.verificationRequest.url}</div>
+                <div class="token-timestamp">Sent at: ${new Date(data.verificationRequest.timestamp).toLocaleString()}</div>
+                
+                <div class="token-label" style="margin-top: 12px;">MTCaptcha Server → Backend:</div>
+                <div class="token-value">Status: ${data.verificationResponse.status} ${data.verificationResponse.statusMessage}
+                
+Response Data:
+${JSON.stringify(data.verificationResponse.data, null, 2)}</div>
+                <div class="token-timestamp">Received at: ${new Date(data.verificationResponse.timestamp).toLocaleString()}</div>
+              </div>
+            `;
+          }
+
+          statusText.textContent = data.success
+            ? "CAPTCHA verification succeeded."
+            : "Registration failed: " + (data.message || "Unknown error.");
+        } catch (err) {
+          console.error("Error calling /register:", err);
+          statusText.textContent = "Error calling backend. See console.";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
